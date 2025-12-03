@@ -126,6 +126,29 @@ class MsSqlServerSourceConfigurationSpecificationTest {
         Assertions.assertEquals(emptySet<String>(), config.namespaces)
     }
 
+    /**
+     * Verifies that named instances (e.g., "host\SQLEXPRESS") are correctly parsed:
+     * - realHost should contain only the base host for SSH tunnel
+     * - jdbcProperties should contain the instanceName parameter
+     */
+    @Test
+    @Property(name = "airbyte.connector.config.json", value = CONFIG_JSON_NAMED_INSTANCE)
+    fun testNamedInstanceParsing() {
+        val pojo: MsSqlServerSourceConfigurationSpecification = supplier.get()
+        val factory = MsSqlServerSourceConfigurationFactory()
+        val config = factory.make(pojo)
+
+        // Verify that realHost contains only the base IP address for SSH tunnel
+        Assertions.assertEquals("10.0.0.1", config.realHost)
+
+        // Verify that instanceName is passed as a JDBC property
+        Assertions.assertEquals("SQLEXPRESS", config.jdbcProperties["instanceName"])
+
+        // Verify the JDBC URL format uses standard placeholders
+        Assertions.assertTrue(config.jdbcUrlFmt.contains("%s"))
+        Assertions.assertTrue(config.jdbcUrlFmt.contains("%d"))
+    }
+
     companion object {
 
         const val CONFIG_JSON: String =
@@ -249,6 +272,26 @@ class MsSqlServerSourceConfigurationSpecificationTest {
   },
   "replication_method": {
     "method": "CDC"
+  }
+}
+"""
+
+        const val CONFIG_JSON_NAMED_INSTANCE: String =
+            """
+{
+  "host": "10.0.0.1\\SQLEXPRESS",
+  "port": 1433,
+  "username": "testuser",
+  "password": "TestPassword123!",
+  "database": "testdb",
+  "ssl_mode": {
+    "mode": "unencrypted"
+  },
+  "tunnel_method": {
+    "tunnel_method": "NO_TUNNEL"
+  },
+  "replication_method": {
+    "method": "STANDARD"
   }
 }
 """

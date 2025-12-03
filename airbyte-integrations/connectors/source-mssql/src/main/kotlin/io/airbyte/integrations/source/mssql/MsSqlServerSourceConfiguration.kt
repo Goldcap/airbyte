@@ -250,8 +250,23 @@ constructor(
             throw ConfigErrorException("Concurrency setting should be positive")
         }
 
+        // Parse host to handle named instances (e.g., "host\instance")
+        // For named instances, we need to:
+        // 1. Extract the base host for SSH tunnel purposes
+        // 2. Extract the instance name to pass as a JDBC parameter
+        val hostParts = pojo.host.split("\\")
+        val realHost = hostParts[0] // Base host for SSH tunnel: "173.190.102.170"
+        val instanceName =
+            if (hostParts.size > 1) hostParts[1] else null // Instance name: "SQLEXPRESS"
+
+        // Add instance name as a JDBC property if present
+        // This allows SSH tunnels to work correctly with named instances
+        if (instanceName != null) {
+            jdbcProperties["instanceName"] = instanceName
+        }
+
         return MsSqlServerSourceConfiguration(
-            realHost = pojo.host,
+            realHost = realHost,
             realPort = pojo.port,
             sshTunnel = sshTunnel,
             sshConnectionOptions = SshConnectionOptions.fromAdditionalProperties(emptyMap()),

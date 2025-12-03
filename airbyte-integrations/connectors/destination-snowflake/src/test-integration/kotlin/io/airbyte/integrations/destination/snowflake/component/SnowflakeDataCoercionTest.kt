@@ -55,6 +55,16 @@ class SnowflakeDataCoercionTest(
         super.`handle number values`(inputValue, expectedValue, expectedChangeReason)
     }
 
+    @ParameterizedTest
+    @MethodSource("io.airbyte.cdk.load.component.DataCoercionTimestampTzFixtures#commonWarehouse")
+    override fun `handle timestamptz values`(
+        inputValue: AirbyteValue,
+        expectedValue: Any?,
+        expectedChangeReason: Reason?
+    ) {
+        super.`handle timestamptz values`(inputValue, expectedValue, expectedChangeReason)
+    }
+
     companion object {
         /**
          * Snowflake does two interesting things when querying a `NUMERIC(38, 0)` column:

@@ -434,8 +434,8 @@ object DataCoercionTimestampTzFixtures {
             ),
             test(
                 "minimum timestamp",
-                TimestampWithTimezoneValue("0001-01-01T00:00Z"),
-                "0001-01-01T00:00Z",
+                TimestampWithTimezoneValue("0001-01-01T00:00:00Z"),
+                "0001-01-01T00:00:00Z",
             ),
             test(
                 "maximum timestamp",

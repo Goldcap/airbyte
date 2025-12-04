@@ -253,16 +253,30 @@ constructor(
         // Parse host to handle named instances (e.g., "host\instance")
         // For named instances, we need to:
         // 1. Extract the base host for SSH tunnel purposes
-        // 2. Extract the instance name to pass as a JDBC parameter
+        // 2. Keep the full host\instance format in JDBC URL when NO_TUNNEL
         val hostParts = pojo.host.split("\\")
-        val realHost = hostParts[0] // Base host for SSH tunnel: "173.190.102.170"
-        val instanceName =
-            if (hostParts.size > 1) hostParts[1] else null // Instance name: "SQLEXPRESS"
+        val realHost = hostParts[0]
+        val hasNamedInstance = hostParts.size > 1
 
-        // Add instance name as a JDBC property if present
-        // This allows SSH tunnels to work correctly with named instances
-        if (instanceName != null) {
-            jdbcProperties["instanceName"] = instanceName
+        // For JDBC URL construction:
+        // - NO_TUNNEL + named instance: Embed "host\instance" directly in URL
+        // - NO_TUNNEL + no named instance: Use standard %s:%d format
+        // - SSH_TUNNEL + named instance: Use %s:%d and pass instanceName as property
+        // - SSH_TUNNEL + no named instance: Use standard %s:%d format
+        val jdbcUrlFmt: String
+        if (hasNamedInstance) {
+            val useTunnel = sshTunnel !is SshNoTunnelMethod
+            if (useTunnel) {
+                // SSH Tunnel: use placeholder and pass instanceName as JDBC property
+                jdbcUrlFmt = "jdbc:sqlserver://%s:%d;databaseName=${pojo.database}"
+                jdbcProperties["instanceName"] = hostParts[1]
+            } else {
+                // No tunnel: embed host\instance directly in JDBC URL
+                jdbcUrlFmt = "jdbc:sqlserver://${pojo.host}:%d;databaseName=${pojo.database}"
+            }
+        } else {
+            // No named instance: standard format
+            jdbcUrlFmt = "jdbc:sqlserver://%s:%d;databaseName=${pojo.database}"
         }
 
         return MsSqlServerSourceConfiguration(
@@ -271,7 +285,7 @@ constructor(
             sshTunnel = sshTunnel,
             sshConnectionOptions = SshConnectionOptions.fromAdditionalProperties(emptyMap()),
             checkpointTargetInterval = checkpointTargetInterval,
-            jdbcUrlFmt = "jdbc:sqlserver://%s:%d;databaseName=${pojo.database}",
+            jdbcUrlFmt = jdbcUrlFmt,
             namespaces = pojo.schemas?.takeIf { it.isNotEmpty() }?.toSet() ?: emptySet(),
             jdbcProperties = jdbcProperties,
             maxConcurrency = maxConcurrency,

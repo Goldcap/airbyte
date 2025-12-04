@@ -129,7 +129,7 @@ class MsSqlServerSourceConfigurationSpecificationTest {
     /**
      * Verifies that named instances (e.g., "host\SQLEXPRESS") are correctly parsed:
      * - realHost should contain only the base host for SSH tunnel
-     * - jdbcProperties should contain the instanceName parameter
+     * - For NO_TUNNEL: host\instance should be embedded directly in JDBC URL
      */
     @Test
     @Property(name = "airbyte.connector.config.json", value = CONFIG_JSON_NAMED_INSTANCE)
@@ -141,12 +141,14 @@ class MsSqlServerSourceConfigurationSpecificationTest {
         // Verify that realHost contains only the base IP address for SSH tunnel
         Assertions.assertEquals("10.0.0.1", config.realHost)
 
-        // Verify that instanceName is passed as a JDBC property
-        Assertions.assertEquals("SQLEXPRESS", config.jdbcProperties["instanceName"])
+        // For NO_TUNNEL, the named instance should be embedded in the JDBC URL format
+        Assertions.assertEquals(
+            "jdbc:sqlserver://10.0.0.1\\SQLEXPRESS:%d;databaseName=testdb",
+            config.jdbcUrlFmt
+        )
 
-        // Verify the JDBC URL format uses standard placeholders
-        Assertions.assertTrue(config.jdbcUrlFmt.contains("%s"))
-        Assertions.assertTrue(config.jdbcUrlFmt.contains("%d"))
+        // Instance name should NOT be in JDBC properties for NO_TUNNEL
+        Assertions.assertNull(config.jdbcProperties["instanceName"])
     }
 
     companion object {
